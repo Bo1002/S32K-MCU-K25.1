@@ -1,0 +1,19 @@
+# Build outputs
+Debug_FLASH/
+Release/
+*.o
+*.d
+*.elf
+*.map
+*.srec
+*.s19
+
+# IDE files
+RemoteSystemsTempFiles/
+.metadata/
+*.launch
+
+# Temp files
+*.exe
+*.tmp
+aa/
