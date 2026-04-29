@@ -3,6 +3,8 @@
 #define FLEXCAN_RX 12
 #define FLEXCAN_TX 13   
 
+uint8_t *data = {0,1,2,3,4,5,6,7};
+
 void SPLL_SOSC_80Mhz()
 {
     /*Set clock divide by 1*/
@@ -46,7 +48,7 @@ void CAN_INIT()
     while((IP_FLEXCAN0->MCR & FLEXCAN_MCR_FRZACK_MASK));
 
     /* Enable freeze mode*/ 
-    IP_FLEXCAN0->MCR |=  FLEXCAN_MCR_FRZ_MASK | FLEXCAN_MCR_HALT_MASK; 
+    IP_FLEXCAN0->MCR =  FLEXCAN_MCR_FRZ_MASK | FLEXCAN_MCR_HALT_MASK; 
     while(!(IP_FLEXCAN0->MCR & FLEXCAN_MCR_FRZACK_MASK));
 }
 
@@ -56,12 +58,26 @@ void CAN_BIT_TIMING()
     IP_FLEXCAN0->CTRL1 |= FLEXCAN_CTRL1_PRESDIV(9) | FLEXCAN_CTRL1_PROPSEG(3) 
                        | FLEXCAN_CTRL1_PSEG1(5) | FLEXCAN_CTRL1_PSEG2(4);
 
+    IP_FLEXCAN0->MCR &=  ~(FLEXCAN_MCR_FRZ_MASK | FLEXCAN_MCR_HALT_MASK); 
     while(IP_FLEXCAN0->MCR & FLEXCAN_MCR_NOTRDY_MASK); 
 }
 
-void CAN_SEND()
+void CAN_SEND(uint16_t id, uint8_t *data, uint8_t len)
 {
-    
+    /*INACTIVE- Block MB out of bus*/
+    IP_FLEXCAN0->RAMn[0] = 0X08000000;
+
+    /*random chose ID, ID in Stand frame allow from 0x000 -> 0x7FF*/
+    IP_FLEXCAN0->RAMn[1] = (id << 18);
+
+    /*we chose DLC = 8byte so byte 0 , 1, 2, 3 */ 
+    IP_FLEXCAN0->RAMn[2] = ((data[0] << 24)| (data[1] << 16) | (data[2] << 8) | data[3] );
+    /*byte 4, 5, 6, 7 */
+    IP_FLEXCAN0->RAMn[3] = ((data[4] << 24)| (data[5] << 16) | (data[6] << 8) | data[7] );
+
+    /*IN CODE: SET DLC 0b1000, DATA = 0b1100 */
+    IP_FLEXCAN0->RAMn[0] = 0x0C080000;
+
 }
 
 int main()
@@ -69,7 +85,7 @@ int main()
     /* Initialize CAN interface */
     SPLL_SOSC_80Mhz();
     CAN_BIT_TIMING();
-    
+    CAN_SEND(0x123,data, 8);
     /* Main loop */
     while(1)
     {
