@@ -1,9 +1,12 @@
 #include <S32K144.h>
-
+#include "NVIC.h"
 #define FLEXCAN_RX 12
 #define FLEXCAN_TX 13   
 
 uint8_t data[] = {0,1,2,3,4,5,6,7};
+volatile uint8_t rx_data[8] = {0}; 
+volatile uint8_t rx_flag = 0;
+
 
 void SPLL_SOSC_80Mhz()
 {
@@ -89,7 +92,6 @@ void CAN_SEND(uint16_t id, uint8_t *data, uint8_t len)
 
 void CAN_RECEIVED(uint16_t filter_ID)
 {
-    uint8_t *rxbuf;
 
     /* CS = EMPTY (CODE - 0X4), DLC = 8*/
     IP_FLEXCAN0->RAMn[4] = 0x04080000;    
@@ -97,28 +99,27 @@ void CAN_RECEIVED(uint16_t filter_ID)
     IP_FLEXCAN0->RAMn[5] = (filter_ID << 18);
 }
 
-uint8_t CAN_RECEIVED_READ(uint8_t *rxbuf)
+void CAN0_ORed_0_15_MB_IRQHandler(void)
 {
     /*Watch IFLAG bit 1  (MB1)*/
     if(!(IP_FLEXCAN0->IFLAG1 & (1 << 1)))
     {
-        return 0; /*there NO new frame*/
-    }
-
     /* READ data from MB1*/
     uint32_t word0 = IP_FLEXCAN0->RAMn[6];
     uint32_t word1 = IP_FLEXCAN0->RAMn[7];
 
-    rxbuf[0] = (word0 >> 24) & 0xFF;
-    rxbuf[1] = (word0 >> 16) & 0xFF;
-    rxbuf[2] = (word0 >> 8) & 0xFF;
-    rxbuf[3] = (word0 ) & 0xFF;
-    rxbuf[4] = (word1 >> 24) & 0xFF;
-    rxbuf[5] = (word1 >> 16) & 0xFF;
-    rxbuf[6] = (word1 >> 8) & 0xFF;
-    rxbuf[7] = (word1 ) & 0xFF;
+    rx_data[0] = (word0 >> 24) & 0xFF;
+    rx_data[1] = (word0 >> 16) & 0xFF;
+    rx_data[2] = (word0 >> 8) & 0xFF;
+    rx_data[3] = (word0 ) & 0xFF;
+    rx_data[4] = (word1 >> 24) & 0xFF;
+    rx_data[5] = (word1 >> 16) & 0xFF;
+    rx_data[6] = (word1 >> 8) & 0xFF;
+    rx_data[7] = (word1 ) & 0xFF;
 
-    return 1;
+    IP_FLEXCAN0->IFLAG1 = (1 << 1);
+    rx_flag =1;
+    }
 }
 
 int main()
@@ -127,15 +128,17 @@ int main()
     SPLL_SOSC_80Mhz();
     CAN_BIT_TIMING();
     CAN_SEND(0x123,data, sizeof(data));
-    /* Main loop */
-    uint8_t rx_data[8] = {0};
+    
+    NVIC_EnableIRQ(CAN0_ORed_0_15_MB_IRQn);
+
     CAN_RECEIVE(0x123);   // chỉ nhận ID 0x123
     while(1)
     {
-        if (CAN_RECEIVE_READ(rx_data))
-    {
-        /* xử lý rx_data ở đây */
-    }
+        if(rx_flag)
+        {
+            rx_flag = 0;
+            /*data executed in hear*/
+        }
     }
     
     return 0;
