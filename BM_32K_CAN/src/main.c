@@ -120,7 +120,7 @@ void CAN0_ORed_0_15_MB_IRQHandler(void)
     IP_FLEXCAN0->IFLAG1 = (1 << 1);
     rx_flag =1;
     }
-}
+};
 
 int main()
 {
