@@ -8,7 +8,7 @@
 #ifndef APP_APP_ETB_H_
 #define APP_APP_ETB_H_
 
-#include "ADC.h"
+#include "ADC_Driver/ADC.h"
 #include "CAN_DR.H"
 #include "PWM_Driver.h"
 #include "encorder.h"
